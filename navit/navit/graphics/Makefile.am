@@ -2,9 +2,9 @@ SUBDIRS=
 if GRAPHICS_ANDROID
   SUBDIRS+=android
 endif
-if GRAPHICS_GTK_DRAWING_AREA
-  SUBDIRS+=gtk_drawing_area
-endif
+#if GRAPHICS_GTK_DRAWING_AREA
+#  SUBDIRS+=gtk_drawing_area
+#endif
 if GRAPHICS_NULL
   SUBDIRS+=null
 endif

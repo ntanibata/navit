@@ -161,6 +161,7 @@ struct graphics_priv {
 	struct graphics_opengl_window_system_methods *window_system_methods;
 	struct graphics_opengl_platform *platform;
 	struct graphics_opengl_platform_methods *platform_methods;
+	struct graphics_opengl_wayland_window *wayland_window;
 };
 
 static struct graphics_priv *graphics_priv_root;
@@ -216,7 +217,7 @@ const char vertex_src [] =
    attribute vec2        position;       \
    attribute vec2        texture_position;       \
    uniform mat4        mvp;             \
-   varying vec2 v_texture_position; \
+   varying mediump vec2 v_texture_position; \
                                          \
    void main()                           \
    {                                     \
@@ -230,7 +231,7 @@ const char fragment_src [] =
    uniform lowp vec4   avcolor;                        \
    uniform sampler2D texture; \
    uniform bool use_texture; \
-   varying vec2 v_texture_position; \
+   varying mediump vec2 v_texture_position; \
    void  main()                                        \
    {                                                   \
       if (use_texture) { \
@@ -798,7 +799,8 @@ draw_polygon(struct graphics_priv *gr, struct graphics_gc_priv *gc,
 	set_color(gr, gc);
 	graphics_priv_root->dirty = 1;
 #if defined(USE_OPENGLES) && !defined(USE_GLUT_FOR_OPENGLES)
-	draw_array(gr, p, count, GL_LINE_STRIP);
+//	draw_array(gr, p, count, GL_LINE_STRIP);
+	draw_array(gr, p, count, GL_TRIANGLE_FAN);
 #else
 
 	GLUtesselator *tess = gluNewTess();	// create a tessellator
@@ -1259,9 +1261,17 @@ load_shader(const char *shader_source, GLenum type)
 }
 #endif
 
+static struct event_priv *
+event_opengl_new(struct event_methods *meth);
+
 static void *
 get_data(struct graphics_priv *this, char *type)
 {
+	const char* platform = getenv("NAVIT_PLATFORM");
+	if (platform == NULL) {
+		platform = "";
+	}
+
 	/*TODO initialize gtkglext context when type=="gtk_widget" */
 	if (!strcmp(type, "gtk_widget")) {
 		fprintf(stderr,
@@ -1277,11 +1287,31 @@ get_data(struct graphics_priv *this, char *type)
 		GLfloat matrix[16];
 		int i;
 
-		this->window_system=graphics_opengl_x11_new(NULL, this->width, this->height, 32, &this->window_system_methods);
-		this->platform=graphics_opengl_egl_new(this->window_system_methods->get_display(this->window_system),
-						       this->window_system_methods->get_window(this->window_system),
-						       &this->platform_methods);
-		this->window_system_methods->set_callbacks(this->window_system, this, resize_callback_do, click_notify_do, motion_notify_do, NULL);
+		if (strcmp(platform, "wayland") == 0) {
+			this->wayland_window = graphics_opengl_wayland_new(
+				NULL, this->width, this->height, 0, &this->window_system_methods);
+			this->platform = graphics_opengl_egl_new(
+				this->window_system_methods->get_display(this->wayland_window),
+				this->window_system_methods->get_window(this->wayland_window),
+				&this->platform_methods);
+			this->window_system_methods->set_callbacks(
+				this->wayland_window, this, resize_callback_do,
+				click_notify_do, motion_notify_do, NULL);
+		} else {
+#if 0
+/* disable for temporary */
+			this->window_system = graphics_opengl_x11_new(
+				NULL, this->width, this->height, 32, &this->window_system_methods);
+			this->platform = graphics_opengl_egl_new(
+				this->window_system_methods->get_display(this->window_system),
+				this->window_system_methods->get_window(this->window_system),
+				&this->platform_methods);
+			this->window_system_methods->set_callbacks(
+				this->window_system, this, resize_callback_do,
+				click_notify_do, motion_notify_do, NULL);
+#endif
+		}
+
 		resize_callback(this->width,this->height);
 #if 0
 		glClearColor ( 0.4 , 0.4 , 0.4 , 1);
@@ -1333,9 +1363,17 @@ get_data(struct graphics_priv *this, char *type)
 		win->fullscreen = graphics_opengl_fullscreen;
 		win->disable_suspend = graphics_opengl_disable_suspend;
 		return win;
+	} else if (strcmp(type, "display") == 0) {
+		return (this->wayland_window) ? this->window_system_methods->get_display(this->wayland_window)
+					      : NULL;
 	} else {
 #ifdef USE_OPENGLES
-		return NULL;
+		if (strcmp(platform, "wayland") == 0) {
+			return this->window_system_methods->get_nativehandle(this->wayland_window);
+		}
+		else {
+			return NULL;
+		}
 #else
 		return &this->DLid;
 #endif
@@ -1362,7 +1400,9 @@ overlay_disable(struct graphics_priv *gr, int disable)
 {
 	gr->overlay_enabled = !disable;
 	gr->force_redraw = 1;
+#if 0
 	draw_mode(gr, draw_mode_end);
+#endif
 }
 
 static void

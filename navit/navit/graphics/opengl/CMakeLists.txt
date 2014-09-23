@@ -1,6 +1,11 @@
 set(graphics_opengl_SOURCES graphics_opengl.c)
 if (USE_OPENGLES)
-   LIST(APPEND graphics_opengl_SOURCES graphics_opengl_x11.c graphics_opengl_egl.c)
+#  LIST(APPEND graphics_opengl_SOURCES graphics_opengl_x11.c graphics_opengl_egl.c)
+   LIST(APPEND graphics_opengl_SOURCES graphics_opengl_egl.c)
+   if (USE_WAYLAND)
+      LIST(APPEND graphics_opengl_SOURCES graphics_opengl_wayland.c)
+   endif (USE_WAYLAND)
 endif (USE_OPENGLES)
 module_add_library(graphics_opengl ${graphics_opengl_SOURCES}) 
+message(STATUS "Compiling graphics_opengl_SOURCES=${graphics_opengl_SOURCES}")
 
