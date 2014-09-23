@@ -265,10 +265,12 @@ registry_handle_global(void *data, struct wl_registry *wl_registry, uint32_t nam
 		window->display->wl_compositor = 
 			wl_registry_bind(wl_registry, name,
 			                 &wl_compositor_interface, 1);
+/**
 	} else if (strcmp(interface, "wl_shell") == 0) {
 		window->display->wl_shell =
 			wl_registry_bind(wl_registry, name,
 			                 &wl_shell_interface, 1);
+**/
 	} else if (strcmp(interface, "wl_seat") == 0) {
 		window->display->wl_seat =
 			wl_registry_bind(wl_registry, name,
